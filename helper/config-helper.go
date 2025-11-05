@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -17,7 +18,18 @@ type Config struct {
 
 var cfg *Config
 
+func isTestMode() bool {
+	for _, arg := range os.Args {
+		if strings.HasPrefix(arg, "-test.") {
+			return true
+		}
+	}
+	return false
+}
+
 func init() {
+	isTestMode := isTestMode()
+
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.SetConfigFile(".env")
@@ -25,7 +37,11 @@ func init() {
 
 	service := viper.GetString("SERVICE_NAME")
 	if service == "" {
-		log.Fatal("Missing required env SERVICE_NAME")
+		if isTestMode {
+			log.Println("Skip, Test mode will do not read configs")
+			return
+		}
+		log.Fatalf("Missing required env SERVICE_NAME")
 	}
 
 	environment := viper.GetString("ENVIRONMENT")
