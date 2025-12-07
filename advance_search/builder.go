@@ -12,10 +12,10 @@ import (
 
 // AdvanceSearch is a fluent builder for Elasticsearch searches
 type AdvanceSearch[DocType any] struct {
-	client   *elasticsearch.TypedClient // pointer to allow mutation
+	client   *elasticsearch.TypedClient
 	index    string
-	query    *types.Query
-	sorts    []types.SortCombinationsVariant
+	query    *types.QueryVariant
+	sort     *types.SortCombinationsVariant
 	pageNum  int
 	pageSize int
 }
@@ -46,8 +46,8 @@ func (s *AdvanceSearch[DocType]) Index(index string) *AdvanceSearch[DocType] {
 }
 
 // Query sets the query (pass *types.Query, usually built with helpers)
-func (s *AdvanceSearch[DocType]) Query(query *types.Query) *AdvanceSearch[DocType] {
-	s.query = query
+func (s *AdvanceSearch[DocType]) Query(query types.QueryVariant) *AdvanceSearch[DocType] {
+	s.query = &query
 	return s
 }
 
@@ -65,8 +65,8 @@ func (s *AdvanceSearch[DocType]) PageSize(pageSize int) *AdvanceSearch[DocType] 
 }
 
 // Query sets the query (pass *types.Query, usually built with helpers)
-func (s *AdvanceSearch[DocType]) Sorts(sorts ...types.SortCombinationsVariant) *AdvanceSearch[DocType] {
-	s.sorts = sorts
+func (s *AdvanceSearch[DocType]) Sort(sort types.SortCombinationsVariant) *AdvanceSearch[DocType] {
+	s.sort = &sort
 	return s
 }
 
@@ -83,11 +83,11 @@ func (s *AdvanceSearch[DocType]) Search() (*SearchResult[DocType], error) {
 		Index(s.index)
 
 	if s.query != nil {
-		req = req.Query(s.query)
+		req = req.Query(*s.query)
 	}
 
 	req = req.
-		Sort().
+		Sort(*s.sort).
 		From(s.pageNum * s.pageSize).
 		Size(s.pageSize)
 
@@ -107,6 +107,7 @@ func (s *AdvanceSearch[DocType]) Search() (*SearchResult[DocType], error) {
 	return &searchResult, nil
 }
 
+// extractHitDocs extract from elaticsearch hit to generic doc type
 func (s *AdvanceSearch[DocType]) extractHitDocs(resp search.Response) []DocType {
 	var docs []DocType
 	for _, hit := range resp.Hits.Hits {
