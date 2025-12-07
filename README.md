@@ -28,19 +28,53 @@ go test ./...
 import (
 	"log"
 
+	"github.com/gocql/gocql"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/esdsl"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/tripconnect/go-common-utils/advance_search"
 )
 
+type ChatMessageDocument struct {
+	Id             gocql.UUID `json:"id"`
+	ConversationId gocql.UUID `json:"conversation_id"`
+	FromUserId     gocql.UUID `json:"from_user_id"`
+	Content        string     `json:"content"`
+	SentTime       int        `json:"sent_time"`
+	CreatedAt      int        `json:"created_at"`
+}
+
+
 func main() {
-	searchResult, err := advance_search.NewAdvanceSearch[models.ChatMessageDocument]().
-		Client(common.ElasticsearchClient).
+	elasticsearchClient, _ = elasticsearch.NewTypedClient(elasticsearch.Config{
+		Addresses: []string{fmt.Sprintf("http://localhost:9200")},
+	})
+
+	var musts []types.QueryVariant{
+		esdsl.NewWildcardQuery("content", "something")
+	}
+
+	var esQuery types.QueryVariant = esdsl.NewBoolQuery().
+		Must(musts...)
+
+	var sort types.SortCombinationsVariant = esdsl.NewSortOptions().
+		AddSortOption("field_name", esdsl.NewFieldSort(sortorder.Desc))
+
+	searchResult, err := advance_search.NewAdvanceSearch[ChatMessageDocument]().
+		Client(elasticsearchClient).
 		Query(esQuery).
-		Index(consts.ChatMessageIndex).
-		PageSize(int(req.GetLimit())).
+		Index("index_name").
+		Page(0, 20).
 		Sort(sort).
 		Search()
-	
-	log.Printf("%v - %v", err, searchResult)
+
+	if err != nil {
+		log.Printf("err: %v", err)
+		return
+	}
+
+	for _, doc := range searchResult {
+		log.Printf("doc: %v", doc)
+	}
 }
 
 
