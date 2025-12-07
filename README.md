@@ -72,7 +72,8 @@ func main() {
 		return
 	}
 
-	for _, doc := range searchResult {
+	log.Printf("total: %v", searchResult.TotalElements)
+	for _, doc := range searchResult.Data {
 		log.Printf("doc: %v", doc)
 	}
 }
